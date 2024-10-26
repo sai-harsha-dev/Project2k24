@@ -21,7 +21,7 @@ status $? 'moved frontend.tar to nginx source' $! 'moving frontend.tar to nginx 
 cd /usr/share/nginx/; sudo rm html/index.html 1>>output.log 2>>error.log &
 status $? 'removed default index.html' $! 'removing default index.html'
 
-sudo tar xvf usr/share/nginx/frontend.tar -C /usr/share/nginx/html/ 1>>output.log 2>>error.log &
+sudo tar xvf /usr/share/nginx/frontend.tar -C /usr/share/nginx/html/ 1>>output.log 2>>error.log &
 status $? 'unzipped source folders' $! 'unzipping source folders'
 
 sudo sed -i -e '1i include /etc/nginx/conf.d/*;' -e '1,$d' /etc/nginx/nginx.conf 1>>output.log 2>>error.log &
