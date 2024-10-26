@@ -1,8 +1,10 @@
 # Instana tracing
-opentracing_load_tracer /usr/local/lib/libinstana_sensor.so /etc/instana-config.json;
-opentracing_propagate_context;
+#opentracing_load_tracer /usr/local/lib/libinstana_sensor.so /etc/instana-config.json;
+#opentracing_propagate_context;
 
-server {
+events{ }
+http {
+    server {
     listen       8080;
     server_name  localhost;
 
@@ -85,4 +87,6 @@ server {
         stub_status on;
         access_log off;
     }
+}
+  
 }
