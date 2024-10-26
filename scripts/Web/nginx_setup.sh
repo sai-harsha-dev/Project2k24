@@ -1,6 +1,7 @@
 #!/bin/bash      
-  
-source ../Common/pg_status
+script_dir=$(dirname $0)
+base_dir=$(dirname $script_dir | xargs realpath)
+source $base_dir/Common/pg_status.sh
 
 sudo apt update 1>>output.log 2>>error.log &
 status $? 'updated repos' $! 'updating repos'
@@ -29,7 +30,7 @@ status $? 'unzipped source folders' $! 'unzipping source folders'
 # sudo tar xvf images.tar -C /usr/share/nginx/html/ 1>>output.log 2>>error.log &
 # status $? 'extrated images' $! 'extracting images'
 
-sudo cat include /etc/nginx/conf.d/* > /etc/nginx/nginx.conf 1>>output.log 2>>error.log &
+sudo cat include /etc/nginx/conf.d/*; > /etc/nginx/nginx.conf 1>>output.log 2>>error.log &
 status $? 'updated nginx.conf' $! 'updating nginx.conf'
 
 sudo systemctl start nginx 1>>output.log 2>>error.log &
