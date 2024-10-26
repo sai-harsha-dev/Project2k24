@@ -24,7 +24,7 @@ status $? 'removed default index.html' $! 'removing default index.html'
 sudo tar xvf /usr/share/nginx/frontend.tar -C /usr/share/nginx/html/ 1>>output.log 2>>error.log &
 status $? 'unzipped source folders' $! 'unzipping source folders'
 
-sudo sed -i -e '1i include /etc/nginx/conf.d/*;' -e '1,$d' /etc/nginx/nginx.conf 1>>output.log 2>>error.log &
+sudo sed -i -e '1i include /etc/nginx/conf.d/* ;' -e '1,$d' /etc/nginx/nginx.conf 1>>output.log 2>>error.log &
 status $? 'updated nginx.conf' $! 'updating nginx.conf'
 
 sudo systemctl start nginx 1>>output.log 2>>error.log &
