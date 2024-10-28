@@ -33,4 +33,7 @@ status $? 'started nginx' $! 'starting nginx'
 sudo systemctl enable nginx 1>>output.log 2>>error.log &
 status $? 'enabled nginx' $! 'enabling nginx'
 
+sudo nginx -s reload 1>>out.log 2>> error.log
+status $? "reloaded nginx" $! "reloading nginx"
+
 sudo systemctl status nginx
