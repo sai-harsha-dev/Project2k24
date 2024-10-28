@@ -18,7 +18,7 @@ status $? 'copied new config' $! 'copying new config file'
 sudo mv ${real_script_dir}/frontend.tar /usr/share/nginx/ 1>>output.log 2>>error.log &
 status $? 'moved frontend.tar to nginx source' $! 'moving frontend.tar to nginx source'
 
-cd /usr/share/nginx/; sudo rm html/index.html 1>>output.log 2>>error.log &
+sudo rm /usr/share/nginx/html/index.html 1>>output.log 2>>error.log &
 status $? 'removed default index.html' $! 'removing default index.html'
 
 sudo tar xvf /usr/share/nginx/frontend.tar -C /usr/share/nginx/html/ 1>>output.log 2>>error.log &
