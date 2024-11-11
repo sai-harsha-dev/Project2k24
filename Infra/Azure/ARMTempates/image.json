@@ -1,0 +1,21 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {},
+    "functions": [],
+    "variables": {},
+    "resources": [
+        {
+        "type": "Microsoft.Compute/images",
+        "apiVersion": "2023-03-01",
+        "name": "Frontend-V1",
+        "location": "Central India",
+        "properties":{
+            "sourceVirtualMachine":{
+                "id": "[resourceId('Microsoft.Compute/virtualMachines','nginx')]"
+            }
+        }
+    }
+    ],
+    "outputs": {}
+}
