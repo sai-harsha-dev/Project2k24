@@ -98,3 +98,22 @@ Resources:
         - Key: name
           Value: RoboEIP
 
+Outputs:
+  VPC:
+   Description: VPC Id export
+   Value: !Ref RoboshopVPC
+   Export:
+    Name: Robo-vpc
+    
+  PublicSubnet:
+    Description: Frontend-subnet ID export
+    Value: !GetAtt [PublicSubnet, SubnetId]
+    Export:
+      Name: Robo-PublicSubnet
+
+  BastionSubnet:
+    Description: bastion-subnet ID export
+    Value: !GetAtt [BastionSubnet, SubnetId]
+    Export:
+      Name: Robo-BastionSubnet
+

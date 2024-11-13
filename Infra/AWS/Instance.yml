@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Template to provision EC2 instance
+Transform: AWS::LanguageExtensions
+Mappings:
+  Rules:
+    BASH:
+      IpProtocol: tcp
+      CidrIp: 0.0.0.0/0
+      FromPort: 22
+      ToPort: 22
+      GroupName: SSHSG
+    SSH: 
+      IpProtocol: tcp
+      CidrIp: 10.0.0.0/16
+      FromPort: 22
+      ToPort: 22
+      GroupName: WEBSG
+    HTTP:
+      IpProtocol: tcp
+      CidrIp: 0.0.0.0/0
+      FromPort: 80
+      ToPort: 80
+      GroupName: WEBSG
+    HTTPS:
+      IpProtocol: tcp
+      CidrIp: 0.0.0.0/0
+      FromPort: 8080
+      ToPort: 8080
+      GroupName: WEBSG
+
+  Components:
+    ssh: 
+      sg: SSHSG
+      subnet: Robo-BastionSubnet
+    Web:
+      sg: WEBSG
+      subnet: Robo-PublicSubnet
+      userdata: '#!/bin/bash \n git clone https://github.com/sai-harsha-dev/Project2k24.git && sudo chmod a+x Project2k24/scripts/Web/nginx_setup.sh && ./Project2k24/scripts/Web/nginx_setup.sh && sudo waagent -deprovision+user -force'
+     
+Resources:
+  Pubkey:
+    Type: AWS::EC2::KeyPair
+    Properties:
+      KeyName: Pub-key
+      PublicKeyMaterial: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDbeHpgsPC5eEWo2g647xjlkplDhQi9o8AkR36/SnhrZWTdmwh8ireiGeMbavpfRJBqhArTs83yoOtiw7wDP/UgjylSnAa8IKBz7YJYdpYt1J8q5EvyWdYAxGF1Q+veTsCFZaUSvEVZzTgY4EXxFVBZI9qB9XuOTVNIfgINp8whYRz2yQkWeD327WTP/Z0KLECe7B81MS7gWmSAFKBMd/chFhyg/W1WLCDqAbWcsceGTLTUwZT+NK/0l40kvnyo+Urc+6cDmzqkpL4iKmA/cfn4/7Hlo94ZrV87dxoyFgDN79q59lYYFWCWWqCU+5NgvMTNv9Ph1ZFTWdYcPF8D4wVNDX6l6qSFwoxosV+WjbG8/NsLLH8BQUQ8Uy1M/AKrIKGWwfoRwMYCW3hXiO02jUIeMmOIsaFuj6qRaJr0yPmydUZ94aV9Z6RzaV5y0sRExq45If/FhOzKqHXRyCKRyoZnCRKUC+curDpWTij638j7GOaDvicM26tfZ7KsiEw0/xc= 91996@LAPTOP-3TMHIAHK
+      Tags: 
+        - Key: Project
+          Value: Roboshop
+  
+  'Fn::ForEach::Component':
+    - Tier
+    - [SSH, WEB]
+    - '${Tier}SG':
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+          GroupDescription: !Sub 'Security group for ${Tier} Tier components'
+          GroupName: !Sub '${Tier}SG'
+          VpcId: !ImportValue Robo-vpc
+          Tags: 
+            - key: Component
+              Value: !Sub '${Tier}SG'
+
+ 
+  'Fn::ForEach::Rule': 
+    - SGRule
+    - [BASH, SSH, HTTP, HTTPS] 
+    - '${SGRule}Rule':
+        Type: AWS::EC2::SecurityGroupIngress
+        Properties:
+          IpProtocol: !FindInMap [Rules, !Ref 'SGRule', IpProtocol, {DefaultValue: !Ref 'AWS::NoValue'}]
+          CidrIp: !FindInMap [Rules, !Ref 'SGRule', CidrIp, {DefaultValue: !Ref 'AWS::NoValue'}]
+          FromPort: !FindInMap [Rules, !Ref 'SGRule', FromPort, {DefaultValue: !Ref 'AWS::NoValue'}]
+          GroupId: !GetAtt [!FindInMap [Rules, !Ref 'SGRule', GroupName, {DefaultValue: !Ref 'AWS::NoValue'}], GroupId]
+          ToPort: !FindInMap [Rules, !Ref 'SGRule', ToPort, {DefaultValue: !Ref 'AWS::NoValue'}]
+
+
+  'Fn::ForEach::Instance':
+    - InstanceTier
+    - [ssh, Web]
+    - '${InstanceTier}Instances': 
+        Type: AWS::EC2::Instance
+        Properties:
+          ImageId: ami-0271c8de451bf50d8
+          KeyName: !Ref Pubkey
+          InstanceType: t2.micro
+          SubnetId: 
+            Fn::ImportValue: !FindInMap [Components, !Ref 'InstanceTier', subnet ]
+          SecurityGroupIds: 
+            - !GetAtt [!FindInMap [Components, !Ref 'InstanceTier', sg], GroupId]
+          UserData: 
+            Fn::Base64:
+              !FindInMap [Components, !Ref 'InstanceTier', userdata, {DefaultValue: !Ref 'AWS::NoValue'} ]
+
+  EIPBastion:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !GetAtt [sshInstances, InstanceId]
+      
