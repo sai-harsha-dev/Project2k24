@@ -1,6 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Template to provision EC2 instance
 Transform: AWS::LanguageExtensions
+
 Mappings:
   Rules:
     BASH:
@@ -11,7 +12,7 @@ Mappings:
       GroupName: SSHSG
     SSH: 
       IpProtocol: tcp
-      CidrIp: 10.0.0.0/16
+      CidrIp: 192.168.0.0/16
       FromPort: 22
       ToPort: 22
       GroupName: WEBSG
@@ -31,12 +32,18 @@ Mappings:
   Components:
     ssh: 
       sg: SSHSG
-      subnet: Robo-BastionSubnet
-    Web:
+      subnet: BASHSubneta
+    web:
       sg: WEBSG
-      subnet: Robo-PublicSubnet
-      userdata: '#!/bin/bash \n git clone https://github.com/sai-harsha-dev/Project2k24.git && sudo chmod a+x Project2k24/scripts/Web/nginx_setup.sh && ./Project2k24/scripts/Web/nginx_setup.sh && sudo waagent -deprovision+user -force'
-     
+      subnet1: WEBSubneta
+      subnet2: WEBSubnetb
+      userdata: |
+        #!/bin/bash  
+        git clone https://github.com/sai-harsha-dev/Project2k24.git  
+        sudo chmod a+x Project2k24/scripts/Web/nginx_setup.sh  
+        ./Project2k24/scripts/Web/nginx_setup.sh
+      LBName: internetLB
+
 Resources:
   Pubkey:
     Type: AWS::EC2::KeyPair
@@ -46,6 +53,11 @@ Resources:
       Tags: 
         - Key: Project
           Value: Roboshop
+
+  EIPBastion:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !GetAtt [sshInstance, InstanceId]
   
   'Fn::ForEach::Component':
     - Tier
@@ -70,29 +82,77 @@ Resources:
           IpProtocol: !FindInMap [Rules, !Ref 'SGRule', IpProtocol, {DefaultValue: !Ref 'AWS::NoValue'}]
           CidrIp: !FindInMap [Rules, !Ref 'SGRule', CidrIp, {DefaultValue: !Ref 'AWS::NoValue'}]
           FromPort: !FindInMap [Rules, !Ref 'SGRule', FromPort, {DefaultValue: !Ref 'AWS::NoValue'}]
-          GroupId: !GetAtt [!FindInMap [Rules, !Ref 'SGRule', GroupName, {DefaultValue: !Ref 'AWS::NoValue'}], GroupId]
+          GroupId: 
+            Fn::GetAtt:
+              [!FindInMap [Rules, !Ref 'SGRule', GroupName, {DefaultValue: !Ref 'AWS::NoValue'}], GroupId]
           ToPort: !FindInMap [Rules, !Ref 'SGRule', ToPort, {DefaultValue: !Ref 'AWS::NoValue'}]
 
 
   'Fn::ForEach::Instance':
     - InstanceTier
-    - [ssh, Web]
-    - '${InstanceTier}Instances': 
-        Type: AWS::EC2::Instance
+    - [ssh, web]
+    - '${InstanceTier}LaunchTemplate':
+        Type: AWS::EC2::LaunchTemplate 
         Properties:
-          ImageId: ami-0271c8de451bf50d8
-          KeyName: !Ref Pubkey
-          InstanceType: t2.micro
-          SubnetId: 
-            Fn::ImportValue: !FindInMap [Components, !Ref 'InstanceTier', subnet ]
-          SecurityGroupIds: 
-            - !GetAtt [!FindInMap [Components, !Ref 'InstanceTier', sg], GroupId]
-          UserData: 
-            Fn::Base64:
-              !FindInMap [Components, !Ref 'InstanceTier', userdata, {DefaultValue: !Ref 'AWS::NoValue'} ]
+          LaunchTemplateName: !Sub '${InstanceTier}LaunchTemplate'
+          LaunchTemplateData:
+            ImageId: ami-0866a3c8686eaeeba
+            InstanceType: t2.micro
+            KeyName: !Ref Pubkey
+            SecurityGroupIds: 
+              - Fn::GetAtt: 
+                  [!FindInMap [Components, !Ref 'InstanceTier', sg], GroupId]
+            UserData: !Base64
+              Fn::FindInMap: 
+                - Components
+                - !Ref 'InstanceTier'
+                - userdata
+                - {DefaultValue: !Ref 'AWS::NoValue'}  
 
-  EIPBastion:
-    Type: AWS::EC2::EIP
+  'Fn::ForEach::ASG':
+    - ASGTier
+    - [web]
+    - '${ASGTier}ASG':      
+        Type: AWS::AutoScaling::AutoScalingGroup
+        Properties:
+          AutoScalingGroupName: !Sub '${ASGTier}ASG'
+          LaunchTemplate: 
+            LaunchTemplateId: !GetAtt [!Sub '${ASGTier}LaunchTemplate',LaunchTemplateId]
+            Version: !GetAtt [!Sub '${ASGTier}LaunchTemplate',LatestVersionNumber]
+          VPCZoneIdentifier: 
+            - Fn::ImportValue: !FindInMap [Components, !Ref 'ASGTier', subnet1]
+            - Fn::ImportValue: !FindInMap [Components, !Ref 'ASGTier', subnet2]
+          DesiredCapacityType: units
+          DesiredCapacity: 2
+          MaxSize: 3
+          MinSize: 1 
+          HealthCheckGracePeriod: 150 
+          DefaultInstanceWarmup: 150
+          HealthCheckType: 'ELB'
+          # LoadBalancerNames: 
+          #   - Fn::ImportValue: 
+          #       !FindInMap [Components, !Ref ASGTier, LBName]
+          TargetGroupARNs: 
+            - Fn::ImportValue:
+                !Sub '${ASGTier}TGARN'
+
+
+          # ImageId: ami-0271c8de451bf50d8
+          # KeyName: !Ref Pubkey
+          # InstanceType: t2.micro
+          # SecurityGroupIds: 
+          #   - !GetAtt [!FindInMap [Components, !Ref 'InstanceTier', sg], GroupId]
+          # UserData: 
+          #   Fn::Base64:
+          #     !FindInMap [Components, !Ref 'InstanceTier', userdata, {DefaultValue: !Ref 'AWS::NoValue'} ]
+
+
+  sshInstance:  
+    Type: AWS::EC2::Instance
     Properties:
-      InstanceId: !GetAtt [sshInstances, InstanceId]
-      
+      SubnetId: 
+        Fn::ImportValue: BASHSubneta
+      LaunchTemplate: 
+        LaunchTemplateId: !GetAtt [sshLaunchTemplate,LaunchTemplateId]
+        Version: !GetAtt [sshLaunchTemplate ,LatestVersionNumber]
+            
