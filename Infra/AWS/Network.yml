@@ -1,0 +1,170 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates the networking stack required for Roboshop
+Transform: AWS::LanguageExtensions
+
+Parameters:
+  Roboaz1:
+    Description: Roboshop AvailabilityZone-1
+    Type: String
+    Default: a
+  Roboaz2:
+    Description: Roboshop AvailabilityZone-2
+    Type: String
+    Default: b  
+Mappings:
+  BASH:
+    a: 
+      CidrBlock: 192.168.0.0/21
+    b: 
+      CidrBlock: 192.168.8.0/21
+
+  WEB: 
+    a:
+      CidrBlock: 192.168.16.0/21
+    b: 
+      CidrBlock: 192.168.32.0/21
+
+  Routes: 
+    BASH:
+      Range: 0.0.0.0/0
+      Gateway: RoboshopIGW
+    WEB:
+      Range: 0.0.0.0/0
+      Gateway: RoboshopNAT
+
+Resources: 
+  RoboshopVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 192.168.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags: 
+        - Key: Project
+          Value: Roboshop
+
+  RoboshopIGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags: 
+        - Key: Project
+          Value: Roboshop 
+
+  IGWVPCAtt:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref RoboshopIGW
+      VpcId: !Ref RoboshopVPC
+
+  NATEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Tags: 
+        - Key: name
+          Value: NATEIP
+
+  RoboshopNAT:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt [NATEIP, AllocationId]
+      SubnetId: !GetAtt [!Sub 'BASHSubneta', SubnetId]
+ 
+  
+  # 'Fn::ForEach::Subnets':
+  #   - Subnettype
+  #   - [BastionSubnet, PublicSubnet]
+  #   - '${Subnettype}':
+  #       Type: AWS::EC2::Subnet
+  #       Properties:
+  #         CidrBlock: !FindInMap [Subnets, SubnetTypes, !Ref 'Subnettype']
+  #         Tags: 
+  #           - Key: Project
+  #             Value: Roboshop
+  #           - Key: Component
+  #             Value: !Ref Subnettype
+  #         VpcId: !Ref RoboshopVPC
+
+
+  'Fn::ForEach::Routetables':
+    - Routetable 
+    - [BASH, WEB]
+    - '${Routetable}RTB':
+        Type: AWS::EC2::RouteTable
+        Properties:
+          Tags: 
+            - Key: Project
+              Value: Roboshop 
+            - Key: Component
+              Value: !Sub '${Routetable}RTB'
+          VpcId: !Ref RoboshopVPC
+
+      'Fn::ForEach::Subnets':
+        - Subnetzone
+        - [a, b]
+        - '${Routetable}Subnet${Subnetzone}':
+            Type: AWS::EC2::Subnet
+            Properties:
+              CidrBlock: !FindInMap [!Ref Routetable, !Ref Subnetzone, CidrBlock]
+              AvailabilityZone: !Sub ${AWS::Region}${Subnetzone}
+              Tags: 
+                - Key: Project
+                  Value: Roboshop
+                - Key: Component
+                  Value: !Sub '${Routetable}Subnet${Subnetzone}'
+              VpcId: !Ref RoboshopVPC
+
+          '${Routetable}${Subnetzone}Att':
+            Type: AWS::EC2::SubnetRouteTableAssociation
+            Properties:
+              RouteTableId: !GetAtt [ !Sub '${Routetable}RTB', RouteTableId]  
+              SubnetId: !GetAtt [ !Sub '${Routetable}Subnet${Subnetzone}', SubnetId] 
+
+
+      '${Routetable}Route':
+        Type: AWS::EC2::Route
+        Properties:
+          DestinationCidrBlock: !FindInMap [ Routes, !Ref Routetable, Range]
+          GatewayId: 
+            Ref:
+              !FindInMap [ Routes, !Ref Routetable, Gateway]
+          RouteTableId: !GetAtt [ !Sub '${Routetable}RTB', RouteTableId]
+
+
+Outputs:
+  VPC:
+   Description: VPC Id export
+   Value: !Ref RoboshopVPC
+   Export:
+    Name: Robo-vpc
+
+  BashRTBId:
+   Description: Bash Route table ID 
+   Value: !GetAtt [ BASHRTB, RouteTableId] 
+   Export:
+    Name: BashRTBId
+  
+
+  'Fn::ForEach::bashSG':
+    - ComponentSG 
+    - [a, b]
+    - 'BASH${ComponentSG}SubnetId':
+        Description: 'BashSubnet ID'
+        Value: !GetAtt [!Sub 'BASHSubnet${ComponentSG}', SubnetId]
+        Export:
+          Name: !Sub 'BASHSubnet${ComponentSG}'
+      'BASH${ComponentSG}SubnetZone':
+        Description: 'BashSubnet Zone'
+        Value: !GetAtt [!Sub 'BASHSubnet${ComponentSG}', AvailabilityZone]
+        Export:
+          Name: !Sub 'BASHSubnet${ComponentSG}Zone'
+    
+  'Fn::ForEach::webSG':
+    - ComponentSG 
+    - [a, b]
+    - 'WEB${ComponentSG}SubnetId':
+        Description: 'WebSubnet ID'
+        Value: !GetAtt [!Sub 'WEBSubnet${ComponentSG}', SubnetId]
+        Export:
+          Name: !Sub 'WEBSubnet${ComponentSG}'
+
+
