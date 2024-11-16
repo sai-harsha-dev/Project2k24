@@ -1,0 +1,136 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Template for creating Target Group, ALB.
+Transform: AWS::LanguageExtensions
+Mappings:
+  TGConfig: 
+    web: 
+      port: 8080
+      protocol: TCP
+  
+  LBconfig:
+    internal:
+      Type: application 
+      Scheme: internal
+      IpProtocol: tcp
+      CidrIp: 192.168.0.0/16
+      FromPort: 8080
+      ToPort: 8080
+      a: 192.168.24.0/21
+      b: 192.168.40.0/21
+    internet:
+      Type: network 
+      Scheme: internet-facing
+      IpProtocol: tcp
+      CidrIp: 0.0.0.0/0
+      FromPort: 8080
+      ToPort: 8080
+      a: 192.168.48.0/21
+      b: 192.168.56.0/21
+
+
+Resources:
+
+  'Fn::ForEach::LBTier':
+    - LBtype
+    - [internet]
+    - '${LBtype}SG':
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+          GroupDescription: !Sub 'Security group for ${LBtype} Load Balancer'
+          GroupName: !Sub '${LBtype}SG'
+          VpcId: !ImportValue Robo-vpc
+          SecurityGroupIngress:
+            - IpProtocol: !FindInMap [LBconfig, !Ref 'LBtype', IpProtocol, {DefaultValue: !Ref 'AWS::NoValue'}]
+              CidrIp: !FindInMap [LBconfig, !Ref 'LBtype', CidrIp, {DefaultValue: !Ref 'AWS::NoValue'}]
+              FromPort: !FindInMap [LBconfig, !Ref 'LBtype', FromPort, {DefaultValue: !Ref 'AWS::NoValue'}]
+              ToPort: !FindInMap [LBconfig, !Ref 'LBtype', ToPort, {DefaultValue: !Ref 'AWS::NoValue'}]
+          Tags: 
+            - key: Component
+              Value: !Sub '${LBtype}SG'
+
+      'Fn::ForEach::LBSubnets':
+        - Subnettype
+        - [a, b]
+        - '${LBtype}Subnet${Subnettype}':
+            Type: AWS::EC2::Subnet
+            Properties:
+              CidrBlock: !FindInMap [LBconfig, !Ref LBtype, !Ref 'Subnettype']
+              AvailabilityZone: 
+                Fn::ImportValue:
+                  !Sub 'BASHSubnet${Subnettype}Zone'
+              VpcId: !ImportValue Robo-vpc
+
+          '${LBtype}${Subnettype}RTBAss':
+            Type: AWS::EC2::SubnetRouteTableAssociation
+            Properties:
+              RouteTableId: !ImportValue BashRTBId 
+              SubnetId: !GetAtt [ !Sub '${LBtype}Subnet${Subnettype}', SubnetId] 
+
+      '${LBtype}LB':
+        Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+        Properties:
+          Type: !FindInMap [LBconfig, !Ref LBtype, Type]
+          IpAddressType: ipv4 
+          Name: !Sub '${LBtype}LB'
+          Scheme: !FindInMap [LBconfig, !Ref LBtype, Scheme]
+          SecurityGroups: 
+            - !GetAtt [!Sub '${LBtype}SG', GroupId]
+          Subnets: 
+            - !GetAtt [!Sub '${LBtype}Subneta', SubnetId]
+            - !GetAtt [!Sub '${LBtype}Subnetb', SubnetId]
+
+
+  InternetLBRule:    
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !GetAtt internetLB.LoadBalancerArn
+      Port: 8080
+      Protocol: TCP
+      DefaultActions: 
+        - Type: forward
+          ForwardConfig: 
+            TargetGroups: 
+             - TargetGroupArn: !GetAtt webTG.TargetGroupArn
+ 
+  'Fn::ForEach::TG':
+    - Tiers 
+    - [web]
+    - '${Tiers}TG':
+        Type: AWS::ElasticLoadBalancingV2::TargetGroup
+        Properties:
+          Name: !Sub '${Tiers}TG' 
+          HealthCheckEnabled: true 
+          HealthCheckIntervalSeconds: 20
+          HealthCheckPath: !FindInMap [ TGConfig, !Ref Tiers, path, {DefaultValue: !Ref 'AWS::NoValue'}]
+          HealthCheckPort: !FindInMap [ TGConfig, !Ref Tiers, port]
+          HealthCheckProtocol: !FindInMap [ TGConfig, !Ref Tiers, protocol]
+          HealthCheckTimeoutSeconds: 10
+          HealthyThresholdCount: 2
+          Port: !FindInMap [ TGConfig, !Ref Tiers, port]
+          Protocol: !FindInMap [ TGConfig, !Ref Tiers, protocol]
+          TargetType: instance
+          UnhealthyThresholdCount: 4
+          VpcId: !ImportValue Robo-vpc
+
+Outputs:
+
+  'Fn::ForEach::TGARN':
+    - TGTier 
+    - [web]
+    - '${TGTier}TGARN':
+        Description: 'ARN of Target Group'
+        Value: !GetAtt [ !Sub '${TGTier}TG', TargetGroupArn ]
+        Export:
+          Name: !Sub '${TGTier}TGARN'
+
+  'Fn::ForEach::ELBNAME':
+    - ELBname 
+    - [internet]
+    - '${ELBname}LB':
+        Description: 'Name of LoadBalancer'
+        Value: !GetAtt [ !Sub '${ELBname}LB', LoadBalancerArn ]
+        Export:
+          Name: !Sub '${ELBname}LB'
+
+
+
