@@ -4,9 +4,8 @@ Transform: AWS::LanguageExtensions
 Mappings:
   TGConfig: 
     web: 
-      path: /
       port: 8080
-      protocol: HTTP
+      protocol: TCP
   
   LBconfig:
     internal:
@@ -79,6 +78,19 @@ Resources:
           Subnets: 
             - !GetAtt [!Sub '${LBtype}Subneta', SubnetId]
             - !GetAtt [!Sub '${LBtype}Subnetb', SubnetId]
+
+
+  InternetLBRule:    
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !GetAtt internetLB.LoadBalancerArn
+      Port: 8080
+      Protocol: TCP
+      DefaultActions: 
+        - Type: forward
+          ForwardConfig: 
+            TargetGroups: 
+             - TargetGroupArn: !GetAtt webTG.TargetGroupArn
  
   'Fn::ForEach::TG':
     - Tiers 
@@ -89,7 +101,7 @@ Resources:
           Name: !Sub '${Tiers}TG' 
           HealthCheckEnabled: true 
           HealthCheckIntervalSeconds: 20
-          HealthCheckPath: !FindInMap [ TGConfig, !Ref Tiers, path]
+          HealthCheckPath: !FindInMap [ TGConfig, !Ref Tiers, path, {DefaultValue: !Ref 'AWS::NoValue'}]
           HealthCheckPort: !FindInMap [ TGConfig, !Ref Tiers, port]
           HealthCheckProtocol: !FindInMap [ TGConfig, !Ref Tiers, protocol]
           HealthCheckTimeoutSeconds: 10
