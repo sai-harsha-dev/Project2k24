@@ -1,0 +1,37 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+
+        "components":{
+            "value": ["web"]
+        },
+
+        "vpc_cidr":{
+            "value": "172.16.0.0/16"
+        },
+
+        "subnet_mask":{
+            "value": 24
+        },
+
+        "sshkey": {
+            "value": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDbeHpgsPC5eEWo2g647xjlkplDhQi9o8AkR36/SnhrZWTdmwh8ireiGeMbavpfRJBqhArTs83yoOtiw7wDP/UgjylSnAa8IKBz7YJYdpYt1J8q5EvyWdYAxGF1Q+veTsCFZaUSvEVZzTgY4EXxFVBZI9qB9XuOTVNIfgINp8whYRz2yQkWeD327WTP/Z0KLECe7B81MS7gWmSAFKBMd/chFhyg/W1WLCDqAbWcsceGTLTUwZT+NK/0l40kvnyo+Urc+6cDmzqkpL4iKmA/cfn4/7Hlo94ZrV87dxoyFgDN79q59lYYFWCWWqCU+5NgvMTNv9Ph1ZFTWdYcPF8D4wVNDX6l6qSFwoxosV+WjbG8/NsLLH8BQUQ8Uy1M/AKrIKGWwfoRwMYCW3hXiO02jUIeMmOIsaFuj6qRaJr0yPmydUZ94aV9Z6RzaV5y0sRExq45If/FhOzKqHXRyCKRyoZnCRKUC+curDpWTij638j7GOaDvicM26tfZ7KsiEw0/xc= 91996@LAPTOP-3TMHIAHK" 
+        },
+
+        "initscript":{
+            "value":{
+                "web": "#!/bin/bash \n git clone https://github.com/sai-harsha-dev/Project2k24.git && sudo chmod a+x Project2k24/scripts/Web/nginx_setup.sh && ./Project2k24/scripts/Web/nginx_setup.sh && sudo waagent -deprovision+user -force"
+            }
+        },
+        
+        "nsg":{
+            "value": ["webnsg"]
+        },
+
+        "vmsize":{
+            "value": "Standard_B1s"
+        }
+
+    }
+}

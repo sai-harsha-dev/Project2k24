@@ -1,10 +1,23 @@
 # Instruction to deploy templates
 ## These are commands for *Azure CLI*
-- ARM
+- ARM (_supports only remote deployment_)
 
-  ```templateFile="Roboshop.json" && devParameterFile="parameters.json" && az group create --name test --location 'Central India' && az deployment group create --name devenvironment --resource-group test --template-file $templateFile --parameters $devParameterFile & az vm deallocate --resource-group test --name nginx && az vm generalize --resource-group test --name nginx &&templateFile="image.json" && az deployment group create --name devenvironment --resource-group test --template-file $templateFile ```
+  ```templateFile="<raw github uri of main.json>"```
+  
+  ```az group create -g <reosurce-group-name> -l centralindia```
+   
+  ``` az deployment group create -n <deployment-group-name> -g <reosurce-group-name> --template-uri $templateFile ```
 
 
-- BICEP
+- BICEP (_supports only local deployment_)
 
-  ```templateFile="Roboshop.bicep" && devParameterFile="parameters.json" && az group create --name test --location 'Central India' && az deployment group create --name devenvironment --resource-group test --template-file $templateFile --parameters $devParameterFile & az vm deallocate --resource-group test --name nginx && az vm generalize --resource-group test --name nginx &&templateFile="image.bicep" && az deployment group create --name devenvironment --resource-group test --template-file $templateFile```
+  ```templateFile="<relative path to main.bicep>"```
+
+  ```ParameterFile="<realtive path to parameters.json>"```
+   
+  ```az group create -g <reosurce-group-name> -l centralindia```
+  
+  ```az deployment group create -n <deployment-group-name> -g <reosurce-group-name> --template-file $templateFile --parameters $ParameterFile```
+
+## Delete the resources
+  ```az group delete -g <reosurce-group-name> -y```
