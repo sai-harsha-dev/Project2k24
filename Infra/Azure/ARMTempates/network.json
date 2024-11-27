@@ -1,0 +1,109 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+
+        "vpc_cidr":{
+            "type": "string",
+            "defaultValue": "172.16.0.0/16"
+        },
+
+        "subnet_mask":{
+            "type": "int",
+            "defaultValue": 24
+        },
+
+        "components": {
+            "type": "array",
+            "defaultValue": ["web"]
+        }
+    },
+    "functions": [],
+    "variables": {},
+    "resources": [
+
+        {
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2024-03-01",
+            "name": "Roboshop-vnet",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "addressSpace": {
+            "addressPrefixes": [
+                "[parameters('vpc_cidr')]"
+                     ]
+                }
+            }
+        },
+
+        {
+            "copy": {
+                "name": "RoboshopNSG",
+                "count": "[length(parameters('components'))]"
+             },
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2024-03-01",
+            "name": "[format('{0}nsg', parameters('components')[copyIndex()])]",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "securityRules": [ 
+                    {   
+                        "name": "internrule",
+                        "properties": {
+                            "access": "Allow",
+                            "destinationAddressPrefix": "0.0.0.0/0",
+                            "destinationPortRange": "*",
+                            "sourceAddressPrefix": "*",
+                            "sourcePortRange": "*",
+                            "direction": "Outbound",
+                            "priority": "101",
+                            "protocol": "*"
+
+                        }
+                    },
+
+                    {   
+                        "name": "pubicinboundrule",
+                        "properties": {
+                            "access": "Allow",
+                            "sourceAddressPrefix": "[ if ( equals(parameters('components')[copyIndex()], 'web'), '0.0.0.0/0', parameters('vpc_cidr') ) ]",
+                            "destinationAddressPrefix": "*",
+                            "destinationPortRange": "*",
+                            "sourcePortRange": "*",
+                            "direction": "Inbound",
+                            "priority": "101",
+                            "protocol": "*"
+
+                        }
+                    }
+                    
+                ]
+            }
+
+        },
+
+        {
+            "copy": {
+                "name": "RoboshopSubnet",
+                "count": "[length(parameters('components'))]"
+                    },
+            "type": "Microsoft.Network/virtualNetworks/subnets", 
+            "apiVersion": "2023-11-01",
+            "name":"[format('Roboshop-vnet/{0}subnet', parameters('components')[copyIndex()] )]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks','Roboshop-vnet')]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups',format('{0}nsg', parameters('components')[copyIndex()]))]"
+            ],
+            "properties": {
+                "addressPrefix": "[cidrSubnet(parameters('vpc_cidr'), parameters('subnet_mask'), copyIndex(1)) ]",
+                "defaultOutboundAccess": false,
+                "networkSecurityGroup": {
+                    "id":  "[resourceId('Microsoft.Network/networkSecurityGroups',format('{0}nsg', parameters('components')[copyIndex()]))]"
+                    }  
+                }
+        }
+    ],
+
+ "outputs":{}
+
+}

@@ -1,0 +1,161 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "sshkey": {
+            "type": "string"
+        },
+
+        "vmsize":{
+            "type": "string",
+            "defaultValue": "Standard_B1s"
+        },
+
+        "initscript":{
+            "type": "object",
+            "defaultValue": {
+                    "web":""
+                }
+        }, 
+
+        "components": {
+            "type": "array",
+            "defaultValue": ["web"]
+        }
+    },
+    "functions": [],
+    "variables": {},
+    "resources": [
+
+    {
+        "copy": {
+            "name": "ScaleSets",
+            "count": "[length(parameters('components'))]"
+        },
+        "type": "Microsoft.Compute/virtualMachineScaleSets",
+        "apiVersion": "2024-07-01",
+        "name": "[format('{0}scaleset', parameters('components')[copyIndex()])]",
+        "location": "[resourceGroup().location]",
+        "zones": [1, 2],
+        "sku":{
+            "name": "[parameters('vmsize')]",
+            "capacity": 2 
+        },
+        "properties": {
+            "orchestrationMode": "Uniform",
+            "upgradePolicy":{
+                "mode": "Automatic"
+            },
+            "virtualMachineProfile":{
+                "networkProfile": {
+                "networkInterfaceConfigurations": [
+                    {
+                        "name": "[format('{0}scalesetvmnic', parameters('components')[copyIndex()])]",
+                        "properties":{
+                            "primary": true,
+                            "ipConfigurations": [
+                                {
+                                    "name": "[format('{0}setip', parameters('components')[copyIndex()])]",
+                                    "properties": {
+                                        "loadBalancerBackendAddressPools": [
+                                            {
+                                            "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', 'publiclb','webpool')]"
+                                            }
+                                        ] ,
+                                        "subnet": {
+                                            "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'Roboshop-vnet', format('{0}subnet', parameters('components')[copyIndex()]))]"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+                },
+            
+                "osProfile": {
+                    "adminUsername": "ubuntu",
+                    "computerNamePrefix": "[format('{0}scalesetvm', parameters('components')[copyIndex()])]",
+                    "customData": "[base64(parameters('initscript')[parameters('components')[copyIndex()]])]",
+                    "linuxConfiguration": {
+                    "ssh": {
+                        "publicKeys": [
+                        {
+                            "keyData": "[parameters('sshkey')]",
+                            "path": "/home/ubuntu/.ssh/authorized_keys"
+                        }
+                        ]
+                    }
+                    }
+                },
+                "storageProfile": {
+                    "osDisk": {
+                    "createOption": "FromImage",
+                    "diffDiskSettings": {
+                        "option": "Local"
+                        }
+                    },
+                    "imageReference": {
+                        "publisher": "canonical",
+                        "offer": "ubuntu-24_04-lts",
+                        "sku": "server",
+                        "version": "latest"
+                        }
+                    }
+                }
+            }        
+            },
+
+        {
+            "copy":{
+                "name": "Scalling Config",
+                "count": "[length(parameters('components'))]"
+            },
+            "type": "Microsoft.Insights/autoscalesettings",
+            "apiVersion": "2022-10-01",
+            "name": "[format('{0}scalepolicy', parameters('components')[copyIndex()])]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachineScaleSets', format('{0}scaleset', parameters('components')[copyIndex()]))]"
+            ],
+            "properties": {
+                "name":"[format('{0}scalepolicy', parameters('components')[copyIndex()])]",
+                "targetResourceUri": "[resourceId('Microsoft.Compute/virtualMachineScaleSets', format('{0}scaleset', parameters('components')[copyIndex()]))]",
+                "enabled": true,
+                "profiles": [
+                    {
+                        "name": "Default",
+                        "capacity": {
+                            "default": "2",
+                            "maximum": "4",
+                            "minimum": "1"
+                        },
+                        "rules": [
+                            {
+                                "metricTrigger": {
+                                    "metricName": "Percentage CPU",
+                                    "metricResourceUri":  "[resourceId('Microsoft.Compute/virtualMachineScaleSets', format('{0}scaleset', parameters('components')[copyIndex()]))]" ,
+                                    "metricResourceLocation": "[resourceGroup().location]",
+                                    "operator": "GreaterThanOrEqual",
+                                    "statistic": "Average",
+                                    "threshold": 60,
+                                    "timeGrain": "PT5M",
+                                    "timeWindow": "PT10M",
+                                    "timeAggregation": "Average"
+                                },
+                                "scaleAction":{
+                                    "cooldown": "PT15M",
+                                    "direction": "Increase",
+                                    "type": "ChangeCount",
+                                    "value": "1"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ],
+
+    "outputs": {}
+}

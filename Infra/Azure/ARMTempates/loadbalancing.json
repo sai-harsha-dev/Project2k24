@@ -1,0 +1,102 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "components": {
+            "type": "array",
+            "defaultValue": ["web"]
+        },
+
+        "nsg": {
+            "type": "array"
+        }
+    },
+    "functions": [],
+    "variables": {},
+    "resources": [
+
+        {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2021-05-01",
+            "name": "publiclbIp",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "Standard"
+            },
+            "properties": {
+                "publicIPAddressVersion": "IPv4",
+                "publicIPAllocationMethod": "Static",
+                "idleTimeoutInMinutes": 4
+            }
+        },
+
+
+        {
+            "type": "Microsoft.Network/loadBalancers",
+            "apiVersion": "2024-03-01",
+            "name" : "publiclb",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', 'publiclbIp')]"
+            ],
+            "sku":{
+                "name": "Standard",
+                "tier": "Regional"
+            },
+            "properties":{
+                "backendAddressPools": [
+                    {
+                        "name":"webpool"
+                    }
+                ],
+                "frontendIPConfigurations": [
+                    {
+                        "name": "externallbIP",
+                        "properties":{
+                            "publicIPAddress": {
+                                    "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'publiclbIp' )]",
+                                    "location": "[resourceGroup().location]"
+                                }
+                        }
+                    }
+                ],
+                "loadBalancingRules": [
+                    {
+                        "name": "PublicInboundAccess",
+                        "properties":{
+                            "backendAddressPool":{
+                                "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', 'publiclb','webpool')]"
+                            },
+                            "frontendIPConfiguration":{
+                                "id": "[resourceId('Microsoft.Network/loadBalancers/frontendIPConfigurations', 'publiclb','externallbIP')]"
+                            },
+                            "backendPort":"8080",
+                            "disableOutboundSnat": false,
+                            "frontendPort": "8080",
+                            "protocol": "Tcp",
+                            "probe": {
+                                "id": "[resourceId('Microsoft.Network/loadBalancers/probes', 'publiclb','webprobe')]"
+                            }
+                        }
+                    }
+                ],
+                "probes":[
+                    {
+                        "name": "webprobe",
+                        "properties":{
+                            "port": 8080,
+                            "protocol": "Http",
+                            "requestPath": "/",
+                            "probeThreshold": 2,
+                            "numberOfProbes":2,
+                            "intervalInSeconds": 30
+                        }
+                    }
+                ],
+                "outboundRules":[
+                ]
+            }
+        }
+    ],
+    "outputs": {}
+}

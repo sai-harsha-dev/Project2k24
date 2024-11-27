@@ -1,0 +1,63 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+    },
+    "functions": [],
+    "variables": {},
+    "resources": [
+        {
+            "type":  "Microsoft.Resources/deployments",
+            "apiVersion": "2022-09-01",
+            "name": "networkdeployment",
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "relativePath": "network.json"
+                },
+                "parametersLink":{
+                    "uri": "https://raw.githubusercontent.com/sai-harsha-dev/Project2k24/refs/heads/Azure/Multitier/Infra/Azure/ARMTempates/Parameters/networkparams.json"
+                }
+            }
+        },
+
+        {
+            "type":   "Microsoft.Resources/deployments",
+            "apiVersion": "2022-09-01",
+            "name": "lbdeployment",
+            "dependsOn": [
+                "[resourceId('Microsoft.Resources/deployments', 'networkdeployment')]"
+            ],
+            "properties":{
+                "mode": "Incremental",
+                "templateLink": {
+                    "relativePath": "loadbalancing.json"
+                },
+                "parametersLink": {
+                    "uri": "https://raw.githubusercontent.com/sai-harsha-dev/Project2k24/refs/heads/Azure/Multitier/Infra/Azure/ARMTempates/Parameters/lbparams.json"
+                }
+            }            
+        },
+
+        {
+            "type":   "Microsoft.Resources/deployments",
+            "apiVersion": "2022-09-01",
+            "name": "computedeployment",
+            "dependsOn": [
+                "[resourceId('Microsoft.Resources/deployments', 'networkdeployment')]",
+                "[resourceId('Microsoft.Resources/deployments', 'lbdeployment')]"
+            ],
+            "properties":{
+                "mode": "Incremental",
+                "templateLink": {
+                    "relativePath": "compute.json"
+                },
+                "parametersLink": {
+                    "uri": "https://raw.githubusercontent.com/sai-harsha-dev/Project2k24/refs/heads/Azure/Multitier/Infra/Azure/ARMTempates/Parameters/computeparams.json"
+                }
+            }
+        }
+
+    ],
+    "outputs": {}
+}
