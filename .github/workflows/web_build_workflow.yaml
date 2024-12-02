@@ -1,0 +1,33 @@
+name: FRONTEND PIPELINE
+
+on:
+    push: 
+        branches:
+            - 'main'
+        paths:
+            - 'scripts/Web/**' 
+
+jobs:
+    trigger_lambda_job:
+        name: Trigger update lamda function
+        runs-on: ubuntu-24.04
+        steps:
+            - name: Configure AWS CLI
+              env:
+                AWS_ACCESS_KEY_ID : ${{ secrets.aws_access_key}}
+                AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_key}}
+              run: |
+                aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID --profile harsha
+                aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY --profile harsha
+                aws configure set profile.harsha.region us-east-1
+
+            - name: trigger lambda
+              run: |
+                aws lambda invoke --profile harsha \
+                    --function-name Roboshop_web_update \
+                    --cli-binary-format raw-in-base64-out \
+                    --payload '{ "component": "web" }' \
+                    output.json
+                
+              
+ 
