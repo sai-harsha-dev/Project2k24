@@ -36,5 +36,11 @@ _NOTE :- only delete in the same order, to ensure export depencdencies are satis
 
   - ``` aws cloudformation delete-stack --stack-name {Instance_stackname} && aws cloudformation wait stack-delete-complete --stack-name {Instance_stackname} ```
 
+<br>
 
-
+# Instructions to deploy AWS functions
+  1. In aws console create the function with same name as on the function file (_ensures that actions workflows invokes the crt function_) with runtime as **PYTHON 3.8+**
+  2. Copy paste the code in the .py file and click **DEPLOY**
+  3. After the function is deployed in **CONFIGURATION** change the time out duration to minimum **300**.
+  4. Ensure *web_build_workflow.yaml* is setup in the remote repo (*ensures automatic invokation of function on commits to main*)
+  5. Make changes to any files under *../../scripts/Web*, commit and push to test the workflow.
