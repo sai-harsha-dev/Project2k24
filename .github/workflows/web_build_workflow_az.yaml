@@ -27,7 +27,7 @@ jobs:
 
             - name: Create Azure Resources
               run: |
-                az storage account create -n rbstg -l centralindia -g Roboshop --sku Standard_LRS
+                az storage account create -n rbstgnew -l centralindia -g Roboshop --sku Standard_LRS
                 az functionapp create -g Roboshop --consumption-plan-location centralindia --runtime python --runtime-version 3.11 --functions-version 4 --name Roboshopapp --os-type linux --storage-account rbstgnew
 
             - name: Checkout functions code repo
