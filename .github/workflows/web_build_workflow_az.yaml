@@ -27,7 +27,7 @@ jobs:
 
             - name: Create Azure Resources
               run: |
-                az storage account create -n rb_stg -l centralindia -g Roboshop --sku Standard_LRS
+                az storage account create -n rbstg -l centralindia -g Roboshop --sku Standard_LRS
                 az functionapp create -g Roboshop --consumption-plan-location centralindia --runtime python--runtime-version 3.11 --fucntion-version 4 -name Roboshop_app --os-type linux ---storage-account rb_stg
 
             - name: Checkout functions code repo
@@ -52,10 +52,12 @@ jobs:
                 package: './Project2k24/Infra/Azure/Function/web_update'
 
             - name: Trigger Web update function
+              env:
+                SUB_ID: ${{ secrets.sub_id}}
               run: |
                 URL=(az functionapp function show --function-name web_update --name Roboshop_app -g Roboshop --query 'invokeUrlTemplate' --output tsv) &&
-
-                curl -d "sub_id=&resource_group_name=Roboshop&vmss_name=webscaleset" $URL
+      
+                curl -d "sub_id=$SUBID&resource_group_name=Roboshop&vmss_name=webscaleset" $URL
 
             - name: Delete functionapp
               run: |
