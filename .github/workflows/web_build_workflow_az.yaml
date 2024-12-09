@@ -42,7 +42,7 @@ jobs:
 
             - name: Install Dependencies
               run: |
-                pushd './Project2k24/Project2k24/Infra/Azure/Functions/web_app/'
+                pushd './Infra/Azure/Functions/web_app'
                 python -m pip install --upgrade pip
                 pip install -r requirements.txt --target=".python_packages/lib/site-packages"
                 popd
@@ -51,7 +51,7 @@ jobs:
               uses: Azure/functions-action@v1
               with: 
                 app-name: Roboshopapp
-                package: './Project2k24/Project2k24/Infra/Azure/Functions/web_app'
+                package: './Infra/Azure/Functions/web_app'
 
             - name: Trigger Web update function
               env:
