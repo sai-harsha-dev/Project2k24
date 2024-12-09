@@ -23,9 +23,7 @@ jobs:
                 CLIENT_SECRET: ${{ secrets.azuresp_secret}}
                 TENANT_ID: ${{ secrets.azuresp_tenant_id}}
               run: |
-                az login --service-principal \
-                --username $APP_ID \
-                --password $CLIENT_SECRET \
+                az login --service-principal --username $APP_ID --password $CLIENT_SECRET 
                 --tenant $TENANT_ID
 
             - name: Create Azure Resources
