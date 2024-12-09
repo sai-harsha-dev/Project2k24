@@ -32,6 +32,8 @@ jobs:
 
             - name: Checkout functions code repo
               uses: actions/checkout@v3
+              with:
+                ref: azfunction
 
             - name: Install python
               uses: actions/setup-python@v4
