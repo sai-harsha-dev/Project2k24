@@ -7,7 +7,7 @@ import time
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 @app.function_name(name='web_update')
-@app.route(route="web_update")
+@app.route(route="webupdate")
 def web_update(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
