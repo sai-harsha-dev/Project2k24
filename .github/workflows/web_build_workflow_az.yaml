@@ -3,7 +3,7 @@ name: AZURE FRONTEND PIPELINE
 on:
    push:
         branches:
-            - 'main'
+            - 'azfunction'
         paths:
             - 'scripts/Web/**'  
 
