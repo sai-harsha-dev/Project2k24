@@ -1,12 +1,13 @@
-import azure.functions as func
+
 import logging 
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.compute import ComputeManagementClient
 import time
+import azure.functions as func
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
-@app.function_name(name='web_update')
+@app.function_name(name='webupdate')
 @app.route(route="webupdate")
 def web_update(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
