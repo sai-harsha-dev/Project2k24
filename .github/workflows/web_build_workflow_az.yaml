@@ -51,7 +51,7 @@ jobs:
               uses: Azure/functions-action@v1
               with: 
                 app-name: Roboshopapp
-                package: './Infra/Azure/Functions/web_app'
+                package: './Infra/Azure/Functions/web_app/'
 
             - name: Trigger Web update function
               env:
