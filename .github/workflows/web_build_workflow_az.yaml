@@ -60,7 +60,8 @@ jobs:
               env:
                 SUB_ID: ${{ secrets.sub_id}}
               run: |
-                URL=$(az functionapp function show --function-name webupdate --name Roboshopapp -g Roboshop --query 'invokeUrlTemplate' --output tsv) &&
+                URL=$(az functionapp function show --function-name webupdate --name Roboshopapp -g Roboshop --query 'invokeUrlTemplate' --output tsv)
+              
                 curl -X POST -H "Content-Type:application/json" -d '{ "sub_id":$SUB_ID, "rg_name": "Roboshop", "vmss_name": "webscaleset" }' $URL
 
             - name: Delete functionapp
