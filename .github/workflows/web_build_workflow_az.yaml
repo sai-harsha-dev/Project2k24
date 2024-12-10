@@ -49,6 +49,7 @@ jobs:
 
             - name: Deploy funtion to functionapp
               uses: Azure/functions-action@v1
+              id: fa
               with: 
                 app-name: Roboshopapp
                 package: './Infra/Azure/Functions/web_app'
@@ -59,7 +60,7 @@ jobs:
               env:
                 SUB_ID: ${{ secrets.sub_id}}
               run: |
-                URL=$(az functionapp function show --function-name web_update --name Roboshopapp -g Roboshop --query 'invokeUrlTemplate' --output tsv) &&
+                URL=$(az functionapp function show --function-name webupdate --name Roboshopapp -g Roboshop --query 'invokeUrlTemplate' --output tsv) &&
                 curl -d '{ "sub_id":$SUB_ID, "rg_name": "Roboshop", "vmss_name": "webscaleset" }' $URL
 
             - name: Delete functionapp
