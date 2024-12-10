@@ -1,4 +1,4 @@
-# Instana tracing
+# Instana tracing 
 #opentracing_load_tracer /usr/local/lib/libinstana_sensor.so /etc/instana-config.json;
 #opentracing_propagate_context;
 
