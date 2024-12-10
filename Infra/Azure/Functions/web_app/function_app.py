@@ -1,9 +1,8 @@
-
-import logging 
+import azure.functions as func
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.compute import ComputeManagementClient
 import time
-import azure.functions as func
+import logging
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
@@ -12,7 +11,10 @@ app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 def web_update(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
-    req_body = req.get_json()
+    try:
+        req_body = req.get_json()
+    except ValueError:
+        return func.HttpResponse("Invalid JSON in request body", status_code=400)
 
     creds = DefaultAzureCredential()
     sub_id = req_body.get("sub_id")
@@ -23,32 +25,30 @@ def web_update(req: func.HttpRequest) -> func.HttpResponse:
 
     webvmss_vm_ids = vmss_info.virtual_machine_scale_set_vms.list(resource_group_name, vmss_name)
 
-    for ids in webvmss_vm_ids:
+    vm_count = vmss_info.virtual_machine_scale_sets.get (resource_group_name, vmss_name).sku.capacity
+
+    for vm in webvmss_vm_ids:
 
         try:
 
-            logging.info(f"Restarting VM instance with ID: {ids}")
+            logging.info(f"Deleting VM instance with ID: {vm.instance_id}")
 
-            vm_restart = vmss_info.virtual_machine_scale_set_vms.restart(resource_group_name, vmss_name, ids)
+            vm_restart = vmss_info.virtual_machine_scale_set_vms.begin_delete(resource_group_name, vmss_name, vm.instance_id )
         
-        except HttpResponseError :
-
-            logging.info(f"Stop operation failed \n ERROR: {vm_restart}")
+        except Exception as error:
+            
+            return func.HttpResponse(f"Stop operation failed \n ERROR: {error}",status_code=200)
 
         try: 
 
-            while vmss_info.virtual_machine_scale_set_vms.list(resource_group_name, vmss_name) <= len(webvmss_vm_ids):
+            while vmss_info.virtual_machine_scale_sets.get (resource_group_name, vmss_name).sku.capacity < vm_count:
 
                 logging.info(f"Waiting for new instance to reprenish")
-                time.sleep(5)
+                time.sleep(20)
 
         except:
 
-            logging.info("Error occured during new vm creation")
+            return func.HttpResponse("Error occured during new vm creation",status_code=200)
 
 
     return func.HttpResponse("VM Update completed", status_code=200)
-
-
-
- 
