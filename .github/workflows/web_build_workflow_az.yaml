@@ -1,0 +1,53 @@
+name: AZURE FRONTEND PIPELINE
+
+on:
+   push:
+        branches:
+            - 'main'
+        paths:
+            - 'scripts/Web/**'  
+
+jobs:
+    Trigger_azure_function:
+        name: Trigger azure function
+        runs-on: ubuntu-24.04
+        steps:
+            - name: Install Azure CLI
+              run: |
+                sudo apt-get update
+                sudo apt-get install apt-transport-https ca-certificates curl gnupg lsb-release
+            
+            - name: Login using service principal
+              env:
+                APP_ID: ${{ secrets.azuresp_app_id}}
+                CLIENT_SECRET: ${{ secrets.azuresp_secret}}
+                TENANT_ID: ${{ secrets.azuresp_tenant_id}}
+              run: |
+                az login --service-principal --username $APP_ID --password $CLIENT_SECRET --tenant $TENANT_ID
+
+            - name: Create Azure Resources
+              run: |
+                az storage account create -n rbstgnew -l centralindia -g Roboshop --sku Standard_LRS
+                az functionapp create -g Roboshop --consumption-plan-location centralindia --runtime python --runtime-version 3.11 --functions-version 4 --name Roboshopapp --os-type linux --storage-account rbstgnew
+
+            - name: Checkout functions code repo
+              uses: actions/checkout@v3
+              with:
+                ref: azfunction
+
+            - name: Install and Zip compress function project files
+              run: |
+                sudo apt install zip
+                cd ./Infra/Azure/Functions/web_app/
+                zip -r function_app.zip *
+                unzip -l function_app.zip
+
+            - name: Deploy function to function app
+              run: |
+                cd ./Infra/Azure/Functions/web_app/
+                az functionapp deployment source config-zip -g Roboshop -n Roboshopapp --src function_app.zip --build-remote true
+
+            - name: Delete functionapp
+              run: |
+                az functionapp delete -g Roboshop --name Roboshopapp
+                
