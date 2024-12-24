@@ -1,0 +1,15 @@
+# Provider , module code
+*.terraform/  
+
+# Depencies lock file
+*.lock.hcl
+
+# Variable value file
+*.tfvars 
+
+# State files
+*.tfstate
+*.tfstate.backup
+
+# plan file
+version1
